@@ -1,0 +1,433 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fun 5x5 Tic Tac Toe with Obstacles</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap');
+        
+        body {
+            background: linear-gradient(135deg, #FF9A8B, #FF6B95, #7366ff);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+            min-height: 100vh;
+            font-family: 'Fredoka', sans-serif;
+        }
+        
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .game-container {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            border: 8px solid #FFD166;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2), 
+                        0 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+        
+        .cell {
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 4px solid #FFD166;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .cell:not(.obstacle):not(.x):not(.o):hover {
+            transform: scale(1.05);
+            background-color: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+        }
+        
+        .x {
+            background: linear-gradient(135deg, #FF6B95, #FF9190);
+        }
+        
+        .o {
+            background: linear-gradient(135deg, #06D6A0, #1A85FF);
+        }
+        
+        .x::after {
+            content: '🍓';
+            font-size: 2.2rem;
+            filter: drop-shadow(2px 2px 2px rgba(0, 0, 0, 0.3));
+        }
+        
+        .o::after {
+            content: '🫐';
+            font-size: 2.2rem;
+            filter: drop-shadow(2px 2px 2px rgba(0, 0, 0, 0.3));
+        }
+        
+        .obstacle {
+            background: linear-gradient(135deg, #8B5E34, #6F4518);
+        }
+        
+        .obstacle::after {
+            content: '🌋';
+            font-size: 2rem;
+            filter: drop-shadow(2px 2px 2px rgba(0, 0, 0, 0.3));
+        }
+        
+        .win-cell {
+            animation: winner 0.6s infinite alternate;
+        }
+        
+        @keyframes winner {
+            0% { transform: scale(1); box-shadow: 0 0 10px #FFD166; }
+            100% { transform: scale(1.1); box-shadow: 0 0 20px #FFD166, 0 0 40px rgba(255, 209, 102, 0.6); }
+        }
+        
+        .player-indicator {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .player-indicator::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.2);
+            animation: shine 2s infinite;
+        }
+        
+        @keyframes shine {
+            0% { left: -100%; }
+            20% { left: 100%; }
+            100% { left: 100%; }
+        }
+        
+        .btn-bounce:hover {
+            animation: bounce 0.5s;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center p-4">
+    <div class="game-container rounded-3xl p-8 max-w-md w-full">
+        <h1 class="text-4xl font-bold text-center mb-2 text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">Fruity Tic Tac Toe</h1>
+        <p class="text-center mb-6 text-gray-700 font-medium">Get 4 in a row to win! Avoid the volcanoes!</p>
+        
+        <div class="flex justify-between items-center mb-6">
+            <div id="player-x" class="player-indicator bg-gradient-to-r from-pink-500 to-red-400 text-white font-bold py-3 px-5 rounded-xl shadow-lg">
+                <span class="flex items-center">🍓 Player X</span>
+            </div>
+            <div id="player-o" class="player-indicator bg-gradient-to-r from-green-400 to-blue-500 text-white font-bold py-3 px-5 rounded-xl shadow-lg opacity-50">
+                <span class="flex items-center">🫐 Player O</span>
+            </div>
+        </div>
+        
+        <div id="game-board" class="grid grid-cols-5 gap-3 mb-6">
+            <!-- Cells will be generated by JavaScript -->
+        </div>
+        
+        <div class="flex justify-between items-center">
+            <div id="game-status" class="text-center text-lg font-bold px-4 py-2 rounded-lg bg-gradient-to-r from-yellow-300 to-yellow-500 text-white shadow-md opacity-0 transition-opacity duration-300">
+                Game in progress
+            </div>
+            <button id="restart-btn" class="btn-bounce bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all transform">
+                🎮 New Game
+            </button>
+        </div>
+    </div>
+    
+    <div id="confetti-container" class="fixed inset-0 pointer-events-none"></div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const board = document.getElementById('game-board');
+            const playerX = document.getElementById('player-x');
+            const playerO = document.getElementById('player-o');
+            const gameStatus = document.getElementById('game-status');
+            const restartBtn = document.getElementById('restart-btn');
+            const confettiContainer = document.getElementById('confetti-container');
+            
+            let currentPlayer = 'x';
+            let gameActive = true;
+            let gameState = Array(25).fill('');
+            let obstacles = [];
+            
+            // Initialize the game
+            function initGame() {
+                // Clear the board
+                board.innerHTML = '';
+                gameState = Array(25).fill('');
+                currentPlayer = 'x';
+                gameActive = true;
+                
+                // Place 3 random obstacles
+                obstacles = [];
+                while (obstacles.length < 3) {
+                    const randomPos = Math.floor(Math.random() * 25);
+                    if (!obstacles.includes(randomPos)) {
+                        obstacles.push(randomPos);
+                        gameState[randomPos] = 'obstacle';
+                    }
+                }
+                
+                // Create the cells
+                for (let i = 0; i < 25; i++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell', 'flex', 'items-center', 'justify-center', 'bg-white', 'rounded-xl', 'h-16');
+                    
+                    if (obstacles.includes(i)) {
+                        cell.classList.add('obstacle');
+                    } else {
+                        cell.addEventListener('click', () => handleCellClick(i));
+                    }
+                    
+                    board.appendChild(cell);
+                }
+                
+                // Update UI
+                updatePlayerIndicator();
+                gameStatus.textContent = 'Game in progress';
+                gameStatus.classList.add('opacity-0');
+                
+                // Add a little animation to the board
+                const cells = board.querySelectorAll('.cell');
+                cells.forEach((cell, index) => {
+                    cell.style.opacity = '0';
+                    cell.style.transform = 'scale(0.5)';
+                    setTimeout(() => {
+                        cell.style.opacity = '1';
+                        cell.style.transform = 'scale(1)';
+                    }, index * 30);
+                });
+            }
+            
+            function updatePlayerIndicator() {
+                if (currentPlayer === 'x') {
+                    playerX.classList.remove('opacity-50');
+                    playerO.classList.add('opacity-50');
+                } else {
+                    playerX.classList.add('opacity-50');
+                    playerO.classList.remove('opacity-50');
+                }
+            }
+            
+            function handleCellClick(index) {
+                if (!gameActive || gameState[index] !== '') return;
+                
+                // Add click effect
+                const cells = board.querySelectorAll('.cell');
+                cells[index].style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    cells[index].style.transform = 'scale(1)';
+                }, 150);
+                
+                // Update game state
+                gameState[index] = currentPlayer;
+                
+                // Update UI
+                cells[index].classList.add(currentPlayer);
+                
+                // Play sound effect
+                playSound(currentPlayer);
+                
+                // Check for win
+                if (checkWin(index)) {
+                    gameActive = false;
+                    gameStatus.textContent = `${currentPlayer === 'x' ? '🍓' : '🫐'} Player ${currentPlayer.toUpperCase()} wins!`;
+                    gameStatus.classList.remove('opacity-0');
+                    createConfetti();
+                    return;
+                }
+                
+                // Check for draw
+                if (!gameState.includes('')) {
+                    gameActive = false;
+                    gameStatus.textContent = '🤝 Game ended in a draw!';
+                    gameStatus.classList.remove('opacity-0');
+                    return;
+                }
+                
+                // Switch player
+                currentPlayer = currentPlayer === 'x' ? 'o' : 'x';
+                updatePlayerIndicator();
+            }
+            
+            function checkWin(lastMove) {
+                const winningCombinations = [];
+                const row = Math.floor(lastMove / 5);
+                const col = lastMove % 5;
+                
+                // Check horizontal (row)
+                for (let start = Math.max(0, col - 3); start <= Math.min(col, 5 - 4); start++) {
+                    winningCombinations.push([
+                        row * 5 + start,
+                        row * 5 + start + 1,
+                        row * 5 + start + 2,
+                        row * 5 + start + 3
+                    ]);
+                }
+                
+                // Check vertical (column)
+                for (let start = Math.max(0, row - 3); start <= Math.min(row, 5 - 4); start++) {
+                    winningCombinations.push([
+                        start * 5 + col,
+                        (start + 1) * 5 + col,
+                        (start + 2) * 5 + col,
+                        (start + 3) * 5 + col
+                    ]);
+                }
+                
+                // Check diagonal (top-left to bottom-right)
+                for (let i = -3; i <= 0; i++) {
+                    if (row + i >= 0 && row + i + 3 < 5 && col + i >= 0 && col + i + 3 < 5) {
+                        winningCombinations.push([
+                            (row + i) * 5 + (col + i),
+                            (row + i + 1) * 5 + (col + i + 1),
+                            (row + i + 2) * 5 + (col + i + 2),
+                            (row + i + 3) * 5 + (col + i + 3)
+                        ]);
+                    }
+                }
+                
+                // Check diagonal (top-right to bottom-left)
+                for (let i = -3; i <= 0; i++) {
+                    if (row + i >= 0 && row + i + 3 < 5 && col - i < 5 && col - i - 3 >= 0) {
+                        winningCombinations.push([
+                            (row + i) * 5 + (col - i),
+                            (row + i + 1) * 5 + (col - i - 1),
+                            (row + i + 2) * 5 + (col - i - 2),
+                            (row + i + 3) * 5 + (col - i - 3)
+                        ]);
+                    }
+                }
+                
+                // Check if any winning combination is fulfilled
+                for (const combination of winningCombinations) {
+                    const [a, b, c, d] = combination;
+                    if (
+                        gameState[a] !== '' && 
+                        gameState[a] !== 'obstacle' && 
+                        gameState[a] === gameState[b] && 
+                        gameState[a] === gameState[c] && 
+                        gameState[a] === gameState[d]
+                    ) {
+                        // Highlight winning cells
+                        const cells = board.querySelectorAll('.cell');
+                        cells[a].classList.add('win-cell');
+                        cells[b].classList.add('win-cell');
+                        cells[c].classList.add('win-cell');
+                        cells[d].classList.add('win-cell');
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+            
+            function playSound(player) {
+                // Using Web Audio API for simple sounds
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Different sounds for X and O
+                if (player === 'x') {
+                    oscillator.type = 'sine';
+                    oscillator.frequency.value = 440; // A4 note
+                } else {
+                    oscillator.type = 'triangle';
+                    oscillator.frequency.value = 523.25; // C5 note
+                }
+                
+                gainNode.gain.value = 0.1;
+                oscillator.start();
+                
+                // Short duration
+                setTimeout(() => {
+                    oscillator.stop();
+                }, 150);
+            }
+            
+            function createConfetti() {
+                const colors = ['#FF6B95', '#FFD166', '#06D6A0', '#118AB2', '#7366ff'];
+                
+                for (let i = 0; i < 150; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.classList.add('confetti');
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.left = Math.random() * 100 + 'vw';
+                    confetti.style.top = -10 + 'px';
+                    confetti.style.width = Math.random() * 10 + 5 + 'px';
+                    confetti.style.height = Math.random() * 10 + 5 + 'px';
+                    confetti.style.opacity = '1';
+                    confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+                    confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+                    
+                    confettiContainer.appendChild(confetti);
+                    
+                    const animationDuration = Math.random() * 3 + 2;
+                    const animationDelay = Math.random() * 2;
+                    
+                    confetti.style.animation = `fall ${animationDuration}s ease-in ${animationDelay}s forwards`;
+                    
+                    // Add keyframes dynamically
+                    const keyframes = `
+                        @keyframes fall {
+                            0% { transform: translateY(0) rotate(0); opacity: 1; }
+                            100% { transform: translateY(${window.innerHeight}px) rotate(${Math.random() * 360}deg); opacity: 0; }
+                        }
+                    `;
+                    
+                    const styleSheet = document.createElement('style');
+                    styleSheet.type = 'text/css';
+                    styleSheet.innerText = keyframes;
+                    document.head.appendChild(styleSheet);
+                    
+                    // Remove confetti after animation
+                    setTimeout(() => {
+                        confetti.remove();
+                        styleSheet.remove();
+                    }, (animationDuration + animationDelay) * 1000);
+                }
+            }
+            
+            // Event listeners
+            restartBtn.addEventListener('click', () => {
+                // Clear any confetti
+                confettiContainer.innerHTML = '';
+                
+                // Button press effect
+                restartBtn.classList.add('scale-95');
+                setTimeout(() => {
+                    restartBtn.classList.remove('scale-95');
+                    initGame();
+                }, 150);
+            });
+            
+            // Initialize the game on load
+            initGame();
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'94a0170e65614b86',t:'MTc0ODk2MzE0MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
